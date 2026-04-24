@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,67 +7,549 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Literal
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
+from seed_data import SEED_VENDORS, SEED_TASKS, DREAM_CATEGORIES, DREAM_GOALS, DEFAULT_PROJECT
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
+app = FastAPI(title="Veronica's Dream Wedding")
 api_router = APIRouter(prefix="/api")
 
+logger = logging.getLogger("wedding")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+
+# ============================
+# MODELS
+# ============================
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class Project(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: "singleton")
+    couple_names: str = "Veronica & Partner"
+    wedding_date: Optional[str] = None  # ISO date string
+    location: str = "Cuneo, Italy"
+    guest_count: int = 50
+    target_budget: float = 15000.0
+    style_notes: str = ""
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class ProjectUpdate(BaseModel):
+    couple_names: Optional[str] = None
+    wedding_date: Optional[str] = None
+    location: Optional[str] = None
+    guest_count: Optional[int] = None
+    target_budget: Optional[float] = None
+    style_notes: Optional[str] = None
+
+
+class VendorService(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: str
+    category: str  # maps to DreamCategory id
+    dream_goal: Optional[str] = None  # dream goal id
+    description: str = ""
+    price_type: Literal["fixed", "per_guest", "per_hour", "per_unit", "custom"] = "fixed"
+    unit_price: float = 0.0
+    deposit: float = 0.0
+    notes: str = ""
+    active: bool = True
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
+class VendorServiceCreate(BaseModel):
+    name: str
+    category: str
+    dream_goal: Optional[str] = None
+    description: str = ""
+    price_type: Literal["fixed", "per_guest", "per_hour", "per_unit", "custom"] = "fixed"
+    unit_price: float = 0.0
+    deposit: float = 0.0
+    notes: str = ""
+    active: bool = True
+
+
+class Vendor(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    categories: List[str] = []
+    contact_person: str = ""
+    phone: str = ""
+    email: str = ""
+    website: str = ""
+    instagram: str = ""
+    location: str = ""
+    notes: str = ""
+    status: Literal["new", "contacted", "shortlisted", "selected", "rejected"] = "new"
+    services: List[VendorService] = []
+    created_at: str = Field(default_factory=now_iso)
+
+
+class VendorCreate(BaseModel):
+    name: str
+    categories: List[str] = []
+    contact_person: str = ""
+    phone: str = ""
+    email: str = ""
+    website: str = ""
+    instagram: str = ""
+    location: str = ""
+    notes: str = ""
+    status: Literal["new", "contacted", "shortlisted", "selected", "rejected"] = "new"
+
+
+class VendorUpdate(BaseModel):
+    name: Optional[str] = None
+    categories: Optional[List[str]] = None
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    instagram: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[Literal["new", "contacted", "shortlisted", "selected", "rejected"]] = None
+
+
+class Selection(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category: str
+    dream_goal: Optional[str] = None
+    vendor_id: str
+    vendor_name: str
+    service_id: str
+    service_name: str
+    price_type: str
+    unit_price: float
+    deposit: float
+    quantity: float = 1
+    total: float = 0.0
+    priority: Literal["must_have", "nice_to_have", "optional"] = "must_have"
+    status: Literal["considering", "selected", "booked"] = "considering"
+    notes: str = ""
+    created_at: str = Field(default_factory=now_iso)
+
+
+class SelectionCreate(BaseModel):
+    category: str
+    dream_goal: Optional[str] = None
+    vendor_id: str
+    service_id: str
+    quantity: float = 1
+    priority: Literal["must_have", "nice_to_have", "optional"] = "must_have"
+    status: Literal["considering", "selected", "booked"] = "considering"
+    notes: str = ""
+
+
+class SelectionUpdate(BaseModel):
+    quantity: Optional[float] = None
+    priority: Optional[Literal["must_have", "nice_to_have", "optional"]] = None
+    status: Optional[Literal["considering", "selected", "booked"]] = None
+    notes: Optional[str] = None
+
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    category: Optional[str] = None
+    vendor_id: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Literal["low", "medium", "high"] = "medium"
+    status: Literal["todo", "in_progress", "done"] = "todo"
+    notes: str = ""
+    created_at: str = Field(default_factory=now_iso)
+
+
+class TaskCreate(BaseModel):
+    title: str
+    category: Optional[str] = None
+    vendor_id: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Literal["low", "medium", "high"] = "medium"
+    status: Literal["todo", "in_progress", "done"] = "todo"
+    notes: str = ""
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
+    vendor_id: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[Literal["low", "medium", "high"]] = None
+    status: Optional[Literal["todo", "in_progress", "done"]] = None
+    notes: Optional[str] = None
+
+
+# ============================
+# HELPERS
+# ============================
+def compute_total(price_type: str, unit_price: float, quantity: float, guest_count: int) -> float:
+    if price_type == "per_guest":
+        return round(unit_price * guest_count * quantity, 2)
+    return round(unit_price * quantity, 2)
+
+
+async def get_project_doc() -> dict:
+    doc = await db.project.find_one({"id": "singleton"}, {"_id": 0})
+    if not doc:
+        p = Project(**DEFAULT_PROJECT)
+        await db.project.insert_one(p.model_dump())
+        return p.model_dump()
+    return doc
+
+
+# ============================
+# ROUTES
+# ============================
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Veronica's Dream Wedding API", "status": "ok"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+# ---- Project ----
+@api_router.get("/project", response_model=Project)
+async def get_project():
+    doc = await get_project_doc()
+    return Project(**doc)
 
-# Include the router in the main app
+
+@api_router.put("/project", response_model=Project)
+async def update_project(update: ProjectUpdate):
+    doc = await get_project_doc()
+    patch = {k: v for k, v in update.model_dump().items() if v is not None}
+    patch["updated_at"] = now_iso()
+    doc.update(patch)
+    await db.project.update_one({"id": "singleton"}, {"$set": doc}, upsert=True)
+    return Project(**doc)
+
+
+# ---- Categories & Goals (static) ----
+@api_router.get("/dream-categories")
+async def get_categories():
+    return DREAM_CATEGORIES
+
+
+@api_router.get("/dream-goals")
+async def get_goals():
+    return DREAM_GOALS
+
+
+# ---- Vendors ----
+@api_router.get("/vendors", response_model=List[Vendor])
+async def list_vendors():
+    vendors = await db.vendors.find({}, {"_id": 0}).to_list(1000)
+    return [Vendor(**v) for v in vendors]
+
+
+@api_router.get("/vendors/{vendor_id}", response_model=Vendor)
+async def get_vendor(vendor_id: str):
+    v = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not v:
+        raise HTTPException(404, "Vendor not found")
+    return Vendor(**v)
+
+
+@api_router.post("/vendors", response_model=Vendor)
+async def create_vendor(payload: VendorCreate):
+    v = Vendor(**payload.model_dump())
+    await db.vendors.insert_one(v.model_dump())
+    return v
+
+
+@api_router.put("/vendors/{vendor_id}", response_model=Vendor)
+async def update_vendor(vendor_id: str, payload: VendorUpdate):
+    existing = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Vendor not found")
+    patch = {k: v for k, v in payload.model_dump().items() if v is not None}
+    existing.update(patch)
+    await db.vendors.update_one({"id": vendor_id}, {"$set": existing})
+    return Vendor(**existing)
+
+
+@api_router.delete("/vendors/{vendor_id}")
+async def delete_vendor(vendor_id: str):
+    await db.vendors.delete_one({"id": vendor_id})
+    # Also remove selections tied to this vendor
+    await db.selections.delete_many({"vendor_id": vendor_id})
+    return {"ok": True}
+
+
+# ---- Vendor services ----
+@api_router.post("/vendors/{vendor_id}/services", response_model=Vendor)
+async def add_service(vendor_id: str, payload: VendorServiceCreate):
+    existing = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Vendor not found")
+    svc = VendorService(**payload.model_dump())
+    existing.setdefault("services", []).append(svc.model_dump())
+    await db.vendors.update_one({"id": vendor_id}, {"$set": {"services": existing["services"]}})
+    return Vendor(**existing)
+
+
+@api_router.put("/vendors/{vendor_id}/services/{service_id}", response_model=Vendor)
+async def update_service(vendor_id: str, service_id: str, payload: VendorServiceCreate):
+    existing = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Vendor not found")
+    services = existing.get("services", [])
+    updated = False
+    for s in services:
+        if s["id"] == service_id:
+            s.update(payload.model_dump())
+            updated = True
+    if not updated:
+        raise HTTPException(404, "Service not found")
+    await db.vendors.update_one({"id": vendor_id}, {"$set": {"services": services}})
+    return Vendor(**existing)
+
+
+@api_router.delete("/vendors/{vendor_id}/services/{service_id}")
+async def delete_service(vendor_id: str, service_id: str):
+    existing = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Vendor not found")
+    services = [s for s in existing.get("services", []) if s["id"] != service_id]
+    await db.vendors.update_one({"id": vendor_id}, {"$set": {"services": services}})
+    await db.selections.delete_many({"service_id": service_id})
+    return {"ok": True}
+
+
+# ---- Selections ----
+@api_router.get("/selections", response_model=List[Selection])
+async def list_selections():
+    sels = await db.selections.find({}, {"_id": 0}).to_list(1000)
+    return [Selection(**s) for s in sels]
+
+
+@api_router.post("/selections", response_model=Selection)
+async def create_selection(payload: SelectionCreate):
+    vendor = await db.vendors.find_one({"id": payload.vendor_id}, {"_id": 0})
+    if not vendor:
+        raise HTTPException(404, "Vendor not found")
+    svc = next((s for s in vendor.get("services", []) if s["id"] == payload.service_id), None)
+    if not svc:
+        raise HTTPException(404, "Service not found")
+    project = await get_project_doc()
+    total = compute_total(svc["price_type"], svc["unit_price"], payload.quantity, project.get("guest_count", 50))
+    sel = Selection(
+        category=payload.category,
+        dream_goal=payload.dream_goal,
+        vendor_id=vendor["id"],
+        vendor_name=vendor["name"],
+        service_id=svc["id"],
+        service_name=svc["name"],
+        price_type=svc["price_type"],
+        unit_price=svc["unit_price"],
+        deposit=svc["deposit"],
+        quantity=payload.quantity,
+        total=total,
+        priority=payload.priority,
+        status=payload.status,
+        notes=payload.notes,
+    )
+    await db.selections.insert_one(sel.model_dump())
+    return sel
+
+
+@api_router.put("/selections/{selection_id}", response_model=Selection)
+async def update_selection(selection_id: str, payload: SelectionUpdate):
+    existing = await db.selections.find_one({"id": selection_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Selection not found")
+    patch = {k: v for k, v in payload.model_dump().items() if v is not None}
+    existing.update(patch)
+    project = await get_project_doc()
+    existing["total"] = compute_total(
+        existing["price_type"], existing["unit_price"],
+        existing.get("quantity", 1), project.get("guest_count", 50)
+    )
+    await db.selections.update_one({"id": selection_id}, {"$set": existing})
+    return Selection(**existing)
+
+
+@api_router.delete("/selections/{selection_id}")
+async def delete_selection(selection_id: str):
+    await db.selections.delete_one({"id": selection_id})
+    return {"ok": True}
+
+
+# ---- Tasks ----
+@api_router.get("/tasks", response_model=List[Task])
+async def list_tasks():
+    tasks = await db.tasks.find({}, {"_id": 0}).to_list(1000)
+    return [Task(**t) for t in tasks]
+
+
+@api_router.post("/tasks", response_model=Task)
+async def create_task(payload: TaskCreate):
+    t = Task(**payload.model_dump())
+    await db.tasks.insert_one(t.model_dump())
+    return t
+
+
+@api_router.put("/tasks/{task_id}", response_model=Task)
+async def update_task(task_id: str, payload: TaskUpdate):
+    existing = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Task not found")
+    patch = {k: v for k, v in payload.model_dump().items() if v is not None}
+    existing.update(patch)
+    await db.tasks.update_one({"id": task_id}, {"$set": existing})
+    return Task(**existing)
+
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str):
+    await db.tasks.delete_one({"id": task_id})
+    return {"ok": True}
+
+
+# ---- Dashboard ----
+@api_router.get("/dashboard")
+async def dashboard():
+    project = await get_project_doc()
+    sels = await db.selections.find({}, {"_id": 0}).to_list(2000)
+    tasks = await db.tasks.find({}, {"_id": 0}).to_list(2000)
+    vendors = await db.vendors.find({}, {"_id": 0}).to_list(2000)
+
+    total_selected = sum(s.get("total", 0) for s in sels if s.get("status") in ("selected", "booked"))
+    total_considering = sum(s.get("total", 0) for s in sels if s.get("status") == "considering")
+    total_deposits = sum(
+        s.get("deposit", 0) for s in sels if s.get("status") in ("selected", "booked")
+    )
+    remaining = max(0.0, (project.get("target_budget") or 0) - total_selected)
+
+    booked = sum(1 for s in sels if s.get("status") == "booked")
+    selected = sum(1 for s in sels if s.get("status") == "selected")
+    considering = sum(1 for s in sels if s.get("status") == "considering")
+
+    tasks_todo = sum(1 for t in tasks if t.get("status") == "todo")
+    tasks_progress = sum(1 for t in tasks if t.get("status") == "in_progress")
+    tasks_done = sum(1 for t in tasks if t.get("status") == "done")
+
+    vendors_selected = sum(1 for v in vendors if v.get("status") == "selected")
+    vendors_shortlisted = sum(1 for v in vendors if v.get("status") == "shortlisted")
+
+    # Next tasks
+    upcoming = [t for t in tasks if t.get("status") != "done"]
+    upcoming.sort(key=lambda t: (t.get("due_date") or "9999-12-31", t.get("priority") or "z"))
+    next_tasks = upcoming[:5]
+
+    # By category
+    by_cat = {}
+    for s in sels:
+        c = s.get("category", "other")
+        by_cat.setdefault(c, {"category": c, "total": 0.0, "count": 0, "items": []})
+        if s.get("status") in ("selected", "booked"):
+            by_cat[c]["total"] += s.get("total", 0)
+        by_cat[c]["count"] += 1
+        by_cat[c]["items"].append(s)
+
+    days_to_wedding = None
+    if project.get("wedding_date"):
+        try:
+            wd = datetime.fromisoformat(project["wedding_date"]).date()
+            delta = (wd - date.today()).days
+            days_to_wedding = delta
+        except Exception:
+            days_to_wedding = None
+
+    return {
+        "project": project,
+        "stats": {
+            "total_selected": round(total_selected, 2),
+            "total_considering": round(total_considering, 2),
+            "total_deposits": round(total_deposits, 2),
+            "remaining": round(remaining, 2),
+            "booked": booked,
+            "selected": selected,
+            "considering": considering,
+            "tasks_todo": tasks_todo,
+            "tasks_progress": tasks_progress,
+            "tasks_done": tasks_done,
+            "vendors_selected": vendors_selected,
+            "vendors_shortlisted": vendors_shortlisted,
+            "days_to_wedding": days_to_wedding,
+        },
+        "next_tasks": next_tasks,
+        "by_category": list(by_cat.values()),
+    }
+
+
+# ---- Seed ----
+@api_router.post("/seed")
+async def seed_data(reset: bool = False):
+    if reset:
+        await db.vendors.delete_many({})
+        await db.tasks.delete_many({})
+        await db.selections.delete_many({})
+        await db.project.delete_many({})
+
+    # Seed project if missing
+    existing_project = await db.project.find_one({"id": "singleton"})
+    if not existing_project:
+        await db.project.insert_one(Project(**DEFAULT_PROJECT).model_dump())
+
+    # Seed vendors if empty
+    vendors_count = await db.vendors.count_documents({})
+    if vendors_count == 0:
+        for v in SEED_VENDORS:
+            services = [VendorService(**s).model_dump() for s in v.get("services", [])]
+            doc = {**v, "services": services, "id": v.get("id", str(uuid.uuid4())),
+                   "created_at": now_iso()}
+            # Ensure required defaults
+            doc.setdefault("status", "shortlisted")
+            doc.setdefault("categories", [])
+            await db.vendors.insert_one(Vendor(**doc).model_dump())
+
+    # Seed tasks if empty
+    tasks_count = await db.tasks.count_documents({})
+    if tasks_count == 0:
+        for t in SEED_TASKS:
+            await db.tasks.insert_one(Task(**t).model_dump())
+
+    return {"ok": True, "seeded": True}
+
+
+# ============================
+# STARTUP
+# ============================
+@app.on_event("startup")
+async def on_startup():
+    # Auto-seed on first run
+    vendors_count = await db.vendors.count_documents({})
+    project_doc = await db.project.find_one({"id": "singleton"})
+    if vendors_count == 0 and not project_doc:
+        logger.info("First boot — seeding database…")
+        try:
+            await seed_data(reset=False)
+        except Exception as e:
+            logger.error(f"Seed failed: {e}")
+    else:
+        logger.info(f"Boot: {vendors_count} vendors in DB")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    client.close()
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -76,14 +559,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
