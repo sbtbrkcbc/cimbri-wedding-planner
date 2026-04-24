@@ -11,10 +11,10 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, Sparkles, Wand2, Users, Package, ClipboardList, Heart } from "lucide-react";
 
 const STEPS = [
-  { key: "category", label: "Dream category", icon: Sparkles },
-  { key: "goal", label: "Dream goal", icon: Heart },
+  { key: "category", label: "Category", icon: Sparkles },
+  { key: "goal", label: "Dream", icon: Heart },
   { key: "vendor", label: "Vendor", icon: Users },
-  { key: "service", label: "Service", icon: Package },
+  { key: "service", label: "Services", icon: Package },
   { key: "details", label: "Details", icon: ClipboardList },
   { key: "confirm", label: "Confirm", icon: Check },
 ];
@@ -47,7 +47,7 @@ function Stepper({ current }) {
   );
 }
 
-function ChoiceGrid({ items, selected, onPick, renderItem, empty }) {
+function ChoiceGrid({ items, selected, onPick, renderItem, empty, multi = false }) {
   if (!items || items.length === 0) {
     return (
       <div className="panel p-10 text-center text-ink-muted italic">
@@ -55,6 +55,10 @@ function ChoiceGrid({ items, selected, onPick, renderItem, empty }) {
       </div>
     );
   }
+  const isSelected = (it) => {
+    if (multi) return Array.isArray(selected) && selected.some((s) => s.id === it.id);
+    return selected?.id === it.id;
+  };
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {items.map((it) => (
@@ -63,10 +67,21 @@ function ChoiceGrid({ items, selected, onPick, renderItem, empty }) {
           type="button"
           onClick={() => onPick(it)}
           data-testid={`choice-${it.id}`}
-          className={`text-left panel-interactive p-5 transition-all ${
-            selected?.id === it.id ? "ring-2 ring-primary border-primary" : ""
+          className={`text-left panel-interactive p-5 transition-all relative ${
+            isSelected(it) ? "ring-2 ring-primary border-primary" : ""
           }`}
         >
+          {multi && (
+            <div
+              className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                isSelected(it)
+                  ? "bg-primary border-primary"
+                  : "border-border bg-surface"
+              }`}
+            >
+              {isSelected(it) && <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={3} />}
+            </div>
+          )}
           {renderItem(it)}
         </button>
       ))}
@@ -74,11 +89,12 @@ function ChoiceGrid({ items, selected, onPick, renderItem, empty }) {
   );
 }
 
-function SummaryCard({ state, servicePrice, total, project }) {
+function SummaryCard({ state, total, project }) {
+  const servicesCount = state.services?.length || 0;
   return (
     <aside className="panel p-6 sticky top-6" data-testid="plan-summary">
       <p className="eyebrow text-primary">Live summary</p>
-      <h3 className="font-heading text-xl mt-1">Your pick so far</h3>
+      <h3 className="font-heading text-xl mt-1">Your picks so far</h3>
 
       <dl className="mt-5 space-y-3 text-sm">
         <div className="flex justify-between gap-3">
@@ -94,35 +110,33 @@ function SummaryCard({ state, servicePrice, total, project }) {
           <dd className="text-right">{state.vendor?.name || "—"}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Service</dt>
-          <dd className="text-right">{state.service?.name || "—"}</dd>
+          <dt className="text-ink-muted">Services</dt>
+          <dd className="text-right">{servicesCount} chosen</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Qty</dt>
+          <dt className="text-ink-muted">Qty (each)</dt>
           <dd className="text-right">{state.quantity}</dd>
         </div>
       </dl>
 
       <div className="divider-dashed my-5" />
 
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-ink-muted">Unit price</span>
-          <span>{servicePrice}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-ink-muted">Deposit</span>
-          <span>{formatEUR(state.service?.deposit || 0)}</span>
-        </div>
-        <div className="flex justify-between items-baseline">
-          <span className="eyebrow">Estimated total</span>
-          <span className="font-heading text-2xl text-primary">{formatEUR(total)}</span>
-        </div>
-        {state.service?.price_type === "per_guest" && (
-          <p className="text-xs text-ink-muted italic">
-            Based on {project?.guest_count || 0} guests — change in Settings.
-          </p>
-        )}
+      {servicesCount > 0 && (
+        <ul className="space-y-2 mb-4 text-xs">
+          {state.services.map((s) => (
+            <li key={s.id} className="flex justify-between gap-2 text-ink-soft">
+              <span className="truncate">{s.name}</span>
+              <span className="text-ink-muted shrink-0">
+                {s.price_type === "custom" ? "—" : formatEUR(s.unit_price)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex justify-between items-baseline">
+        <span className="eyebrow">Estimated total</span>
+        <span className="font-heading text-2xl text-primary">{formatEUR(total)}</span>
       </div>
 
       <p className="text-xs text-ink-muted mt-6 italic">
@@ -139,7 +153,7 @@ export default function PlanBuilder() {
   const [category, setCategory] = useState(null);
   const [goal, setGoal] = useState(null);
   const [vendor, setVendor] = useState(null);
-  const [service, setService] = useState(null);
+  const [services, setServices] = useState([]); // array of selected services
   const [quantity, setQuantity] = useState(1);
   const [priority, setPriority] = useState("must_have");
   const [status, setStatus] = useState("considering");
@@ -166,26 +180,31 @@ export default function PlanBuilder() {
     });
   }, [vendor, category, goal]);
 
-  const total = useMemo(() => {
-    if (!service) return 0;
+  const toggleService = (svc) => {
+    setServices((prev) => {
+      const exists = prev.some((s) => s.id === svc.id);
+      return exists ? prev.filter((s) => s.id !== svc.id) : [...prev, svc];
+    });
+  };
+
+  const totalForOne = (svc) => {
     const q = Number(quantity || 1);
     const gc = project?.guest_count || 0;
-    if (service.price_type === "per_guest") return service.unit_price * gc * q;
-    return service.unit_price * q;
-  }, [service, quantity, project]);
+    if (svc.price_type === "per_guest") return svc.unit_price * gc * q;
+    return svc.unit_price * q;
+  };
 
-  const servicePriceLabel = service
-    ? service.price_type === "custom"
-      ? "On request"
-      : `${formatEUR(service.unit_price)} · ${PRICE_TYPE_LABEL[service.price_type]}`
-    : "—";
+  const total = useMemo(
+    () => services.reduce((sum, s) => sum + totalForOne(s), 0),
+    [services, quantity, project]
+  );
 
   const reset = () => {
     setStep(0);
     setCategory(null);
     setGoal(null);
     setVendor(null);
-    setService(null);
+    setServices([]);
     setQuantity(1);
     setPriority("must_have");
     setStatus("considering");
@@ -194,32 +213,38 @@ export default function PlanBuilder() {
 
   const canNext = () => {
     if (step === 0) return !!category;
-    if (step === 1) return true; // goal optional
+    if (step === 1) return true;
     if (step === 2) return !!vendor;
-    if (step === 3) return !!service;
+    if (step === 3) return services.length > 0;
     if (step === 4) return quantity > 0;
     return true;
   };
 
   const handleSave = async () => {
-    if (!service || !vendor || !category) return;
+    if (services.length === 0 || !vendor || !category) return;
     try {
       setSaving(true);
-      await api.createSelection({
-        category: category.id,
-        dream_goal: goal?.id || null,
-        vendor_id: vendor.id,
-        service_id: service.id,
-        quantity: Number(quantity) || 1,
-        priority,
-        status,
-        notes,
-      });
-      toast.success("Added to your plan — beautiful choice.");
+      for (const svc of services) {
+        await api.createSelection({
+          category: category.id,
+          dream_goal: goal?.id || null,
+          vendor_id: vendor.id,
+          service_id: svc.id,
+          quantity: Number(quantity) || 1,
+          priority,
+          status,
+          notes,
+        });
+      }
+      toast.success(
+        services.length === 1
+          ? "Added to your plan — beautiful choice."
+          : `${services.length} services added to your plan.`
+      );
       await refresh();
       reset();
     } catch (e) {
-      toast.error("Couldn't save this pick. Please try again.");
+      toast.error("Couldn't save these picks. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -234,7 +259,7 @@ export default function PlanBuilder() {
       <PageHeader
         eyebrow="Guided planning"
         title="Let's shape one more piece of the day."
-        description="Follow the steps — the app will do the math and keep your dream vision tidy."
+        description="Follow the steps — you can pick several services from the same vendor at once."
         testId="plan-builder-header"
       >
         <Button variant="outline" onClick={reset} data-testid="reset-wizard" className="rounded-full">
@@ -250,7 +275,7 @@ export default function PlanBuilder() {
             <ChoiceGrid
               items={categories}
               selected={category}
-              onPick={(c) => { setCategory(c); setGoal(null); setVendor(null); setService(null); }}
+              onPick={(c) => { setCategory(c); setGoal(null); setVendor(null); setServices([]); }}
               renderItem={(c) => (
                 <>
                   <p className="eyebrow">{c.color} moment</p>
@@ -281,7 +306,7 @@ export default function PlanBuilder() {
             <ChoiceGrid
               items={filteredVendors}
               selected={vendor}
-              onPick={(v) => { setVendor(v); setService(null); }}
+              onPick={(v) => { setVendor(v); setServices([]); }}
               renderItem={(v) => (
                 <>
                   <p className="eyebrow">{v.status}</p>
@@ -298,46 +323,54 @@ export default function PlanBuilder() {
           )}
 
           {step === 3 && (
-            <ChoiceGrid
-              items={filteredServices}
-              selected={service}
-              onPick={setService}
-              renderItem={(s) => (
-                <>
-                  <p className="eyebrow">{PRICE_TYPE_LABEL[s.price_type]}</p>
-                  <h4 className="font-heading text-lg mt-1">{s.name}</h4>
-                  {s.description && <p className="text-sm text-ink-soft mt-2">{s.description}</p>}
-                  <p className="text-sm text-ink font-medium mt-3">
-                    {s.price_type === "custom" ? "On request" : formatEUR(s.unit_price)}
-                    {s.deposit ? ` • Deposit ${formatEUR(s.deposit)}` : ""}
-                  </p>
-                </>
-              )}
-              empty="No matching services. Try loosening the dream goal or picking a different vendor."
-            />
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-ink-soft">
+                  Tick any services you'd like to add — you can pick more than one.
+                </p>
+                <p className="text-xs text-ink-muted">{services.length} selected</p>
+              </div>
+              <ChoiceGrid
+                items={filteredServices}
+                selected={services}
+                onPick={toggleService}
+                multi
+                renderItem={(s) => (
+                  <>
+                    <p className="eyebrow">{PRICE_TYPE_LABEL[s.price_type]}</p>
+                    <h4 className="font-heading text-lg mt-1 pr-8">{s.name}</h4>
+                    {s.description && <p className="text-sm text-ink-soft mt-2">{s.description}</p>}
+                    <p className="text-sm text-ink font-medium mt-3">
+                      {s.price_type === "custom" ? "On request" : formatEUR(s.unit_price)}
+                      {s.deposit ? ` • Deposit ${formatEUR(s.deposit)}` : ""}
+                    </p>
+                  </>
+                )}
+                empty="No matching services. Try a different vendor or loosen the dream goal."
+              />
+            </>
           )}
 
-          {step === 4 && service && (
+          {step === 4 && services.length > 0 && (
             <div className="panel p-6 md:p-8 space-y-5">
+              <div className="rounded-xl bg-primary-soft p-4 text-sm">
+                Applying to <strong>{services.length}</strong> service{services.length > 1 && "s"} from <strong>{vendor.name}</strong>.
+              </div>
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
-                  <Label htmlFor="qty">Quantity</Label>
+                  <Label htmlFor="qty">Quantity (each)</Label>
                   <Input
                     id="qty"
                     type="number"
                     min={0}
-                    step={service.price_type === "per_hour" ? 0.5 : 1}
+                    step={1}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     className="mt-2 rounded-xl"
                     data-testid="quantity-input"
                   />
                   <p className="text-xs text-ink-muted mt-2">
-                    {service.price_type === "per_guest"
-                      ? `Multiplied by ${project?.guest_count || 0} guests`
-                      : service.price_type === "per_hour"
-                      ? "Number of hours"
-                      : "Number of units / portions"}
+                    Per-guest services multiply by {project?.guest_count || 0} guests automatically.
                   </p>
                 </div>
                 <div>
@@ -368,24 +401,37 @@ export default function PlanBuilder() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="notes">Notes (optional)</Label>
+                <Label htmlFor="notes">Notes (optional, applied to all)</Label>
                 <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-2 rounded-xl" rows={3} data-testid="notes-input" />
               </div>
             </div>
           )}
 
-          {step === 5 && service && vendor && category && (
+          {step === 5 && services.length > 0 && vendor && category && (
             <div className="panel p-8 md:p-10 bg-gradient-to-br from-primary-soft to-surface">
               <p className="eyebrow text-primary">Ready to add</p>
               <h3 className="font-heading text-3xl mt-2">
-                {service.name} from {vendor.name}
+                {services.length} service{services.length > 1 && "s"} from {vendor.name}
               </h3>
-              <p className="text-ink-soft mt-3 leading-relaxed">
+              <p className="text-ink-soft mt-3">
                 Part of <strong>{category.name}</strong>
                 {goal && <> — dream goal <strong>{goal.name}</strong></>}.
-                Quantity <strong>{quantity}</strong>. Marked as <strong>{PRIORITY_LABEL[priority]}</strong> · status <strong>{status}</strong>.
+                Quantity <strong>{quantity}</strong> · priority <strong>{PRIORITY_LABEL[priority]}</strong> · <strong>{status}</strong>.
               </p>
-              <div className="mt-6 flex items-baseline gap-3">
+
+              <ul className="mt-6 divide-y divide-dashed divide-border">
+                {services.map((s) => (
+                  <li key={s.id} className="py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{s.name}</p>
+                      <p className="text-xs text-ink-muted">{PRICE_TYPE_LABEL[s.price_type]}</p>
+                    </div>
+                    <p className="font-heading text-lg">{formatEUR(totalForOne(s))}</p>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 flex items-baseline gap-3 pt-4 border-t border-dashed border-border">
                 <span className="eyebrow">Total</span>
                 <span className="font-heading text-4xl text-primary">{formatEUR(total)}</span>
               </div>
@@ -396,7 +442,7 @@ export default function PlanBuilder() {
                 data-testid="save-selection"
               >
                 <Wand2 className="w-4 h-4" />
-                {saving ? "Adding…" : "Add to my plan"}
+                {saving ? "Adding…" : `Add ${services.length} to my plan`}
               </Button>
             </div>
           )}
@@ -425,8 +471,7 @@ export default function PlanBuilder() {
         </div>
 
         <SummaryCard
-          state={{ category, goal, vendor, service, quantity }}
-          servicePrice={servicePriceLabel}
+          state={{ category, goal, vendor, services, quantity }}
           total={total}
           project={project}
         />
