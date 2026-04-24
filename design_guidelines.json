@@ -1,0 +1,182 @@
+{
+  "theme": "light",
+  "archetype": "1 (Organic & Earthy / Pastel & Soft hybrid)",
+  "emotional_tone": "Calm, elegant, modern, airy, emotionally warm, and stress-reducing. A beautiful private command center for wedding planning, free of corporate spreadsheet aesthetics.",
+  "colors": {
+    "primary": {
+      "DEFAULT": "#A3B19B",
+      "foreground": "#FFFFFF",
+      "hover": "#8C9C84",
+      "description": "Sage green. Used for primary actions, progress bars, and reassuring accents."
+    },
+    "secondary": {
+      "DEFAULT": "#D4A5A5",
+      "foreground": "#FFFFFF",
+      "hover": "#C29393",
+      "description": "Dusty rose. Used for secondary highlights, romantic touches, and dream vision tags."
+    },
+    "accent": {
+      "DEFAULT": "#C5A880",
+      "foreground": "#FFFFFF",
+      "hover": "#B3956D",
+      "description": "Muted gold. Used sparingly for special highlights, icons, and \"selected\" states."
+    },
+    "background": {
+      "DEFAULT": "#FDFBF7",
+      "description": "Warm ivory. The global background color, providing an airy and soft foundation."
+    },
+    "surface": {
+      "DEFAULT": "#FFFFFF",
+      "description": "Pure white for cards and floating elements to stand out against the ivory background."
+    },
+    "border": {
+      "DEFAULT": "#E5E3DC",
+      "hover": "#D5D3CC",
+      "description": "Soft stone neutral. Used for delicate borders around cards, inputs, and dividers."
+    },
+    "text": {
+      "primary": "#3A3632",
+      "secondary": "#6D6863",
+      "muted": "#96918C",
+      "description": "Deep warm greys/browns instead of harsh black to maintain softness."
+    },
+    "status": {
+      "success": "#A3B19B",
+      "pending": "#C5A880",
+      "neutral": "#E5E3DC",
+      "error": "#D4A5A5"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "heading": "Cormorant Garamond, serif",
+      "body": "Manrope, sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-text-primary",
+      "h2": "text-3xl md:text-4xl font-normal tracking-tight text-text-primary",
+      "h3": "text-2xl md:text-3xl font-normal text-text-primary",
+      "h4": "text-xl font-medium text-text-primary",
+      "body_large": "text-lg font-normal leading-relaxed text-text-secondary",
+      "body": "text-base font-normal leading-relaxed text-text-secondary",
+      "small": "text-sm font-medium tracking-wide text-text-muted uppercase"
+    },
+    "microcopy_tone": {
+      "style": "Reassuring, empathetic, low-stress, emotionally supportive.",
+      "examples": [
+        "You're making beautiful progress.",
+        "Still open — no need to decide just yet.",
+        "Your dream team is coming together."
+      ]
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "px-6 py-12 md:px-12 md:py-20",
+    "card_padding": "p-6 md:p-8",
+    "gap_system": {
+      "small": "gap-4",
+      "medium": "gap-8",
+      "large": "gap-12",
+      "section": "gap-24"
+    },
+    "border_radius": {
+      "card": "rounded-2xl",
+      "button": "rounded-full",
+      "input": "rounded-xl",
+      "badge": "rounded-full"
+    },
+    "shadows": {
+      "card": "shadow-[0_4px_40px_-10px_rgba(0,0,0,0.05)]",
+      "hover": "shadow-[0_12px_60px_-15px_rgba(163,177,155,0.15)]",
+      "floating": "shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary-hover rounded-full px-8 py-3 transition-all duration-300 font-medium",
+      "secondary": "bg-transparent border border-border text-text-primary hover:border-primary hover:text-primary rounded-full px-8 py-3 transition-all duration-300",
+      "ghost": "text-text-secondary hover:text-primary transition-colors duration-300"
+    },
+    "cards": {
+      "base": "bg-surface rounded-2xl border border-border p-6 md:p-8 shadow-card transition-all duration-300",
+      "interactive": "hover:shadow-hover hover:-translate-y-1 hover:border-primary/30 cursor-pointer"
+    },
+    "inputs": {
+      "text": "bg-background border border-border rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-300 placeholder:text-text-muted"
+    },
+    "tabs": {
+      "list": "inline-flex bg-background p-1 rounded-full border border-border",
+      "trigger": "rounded-full px-6 py-2 text-sm font-medium text-text-secondary data-[state=active]:bg-surface data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+    },
+    "progress_bar": {
+      "track": "bg-border h-2 rounded-full overflow-hidden",
+      "indicator": "bg-primary h-full rounded-full transition-all duration-700 ease-out"
+    }
+  },
+  "visual_enhancers": {
+    "icons": {
+      "library": "lucide-react",
+      "style": "Subtle, thin stroke, emotionally warm. Use muted colors.",
+      "stroke_width": 1.5
+    },
+    "decorative_elements": {
+      "florals": "Subtle line-art botanicals or muted watercolor shapes placed in corners of the screen or empty states to reinforce the wedding theme.",
+      "dividers": "Use a subtle 1px dashed or dotted line (border-border) instead of solid lines to feel less corporate."
+    }
+  },
+  "page_patterns": {
+    "dashboard": "Bento grid layout. Top row: greeting and progress. Middle: key stats (budget, vendors booked) in soft cards. Bottom: next actions list.",
+    "dream_vision": "Masonry gallery or wide staggered cards mixing beautiful imagery with estimated budgets and assigned vendors. Focus on aesthetics and inspiration over numbers.",
+    "plan_builder": "Guided wizard. Clean, progressive disclosure. One question/step at a time. Generous whitespace, large touch targets, live budget calculation on the side.",
+    "vendor_directory": "Grid of soft cards. Badges for status (Shortlisted, Booked). Clear contact actions.",
+    "budget": "Visual, reassuring cards. Use soft progress bars (sage green fill, stone track). No dense tables; break down costs into accordion rows."
+  },
+  "media": {
+    "hero_backgrounds": [
+      {
+        "url": "https://images.unsplash.com/photo-1760681555566-cf2fcdfab99b",
+        "category": "Dashboard & Settings Hero",
+        "description": "Rustic Italian farmhouse surrounded by cypress trees (perfect for La Locanda del Nocciolo vibe)."
+      }
+    ],
+    "dream_vision_images": [
+      {
+        "url": "https://images.unsplash.com/photo-1677607787250-1e4e9adf2bdc",
+        "category": "Florals & Decor",
+        "description": "Dusty rose and dried floral bouquet, perfectly matching the aesthetic."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/65200b28b0297ed989ca6b88376d0f9aa9c4c51ce5344af5924fdac6fc7ff5ef.png",
+        "category": "Turkish Corner",
+        "description": "Elegant Turkish wedding corner setup with sage and rose accents, traditional rugs, brass lanterns."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1767961054383-93f2d184d13b",
+        "category": "Lighting & Candles",
+        "description": "White lanterns and candles on a table setting."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/752d4c4a13df0b0a23af0bd571f43285d72a55ee167e9313dc7f5e71cbc7f130.png",
+        "category": "Chocolate Fountain",
+        "description": "Elegant chocolate fountain setup with dusty rose and sage floral accents."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/28d31a81e15339381491d64dc1249cef93704b21c82ab9b5be2f86403423263d.png",
+        "category": "Live Sketching",
+        "description": "Watercolor live sketch of a couple on an easel."
+      }
+    ]
+  },
+  "testing": {
+    "requirements": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
+  },
+  "instructions_to_main_agent": [
+    "Install and setup Tailwind and Google Fonts (Cormorant Garamond and Manrope).",
+    "Configure Tailwind config with the custom colors provided above.",
+    "Do NOT use a standard table component for the budget or vendors. Use card grids, flex rows, and accordions to avoid the 'spreadsheet' feel.",
+    "Implement the Plan Builder as a multi-step wizard using state management. Calculate budget interactively.",
+    "Seed the app state with the provided context (Venue: La Locanda del Nocciolo, Florist: Symon Mattio, etc.).",
+    "Ensure the entire app maintains a light, airy, and emotionally reassuring tone.",
+    "Use Lucide-react for all icons."
+  ]
+}
