@@ -4,12 +4,31 @@ import { usePlanner } from "@/lib/planner-context";
 import { formatEUR } from "@/lib/api";
 import { Sparkles, Check, CircleDashed, Flower2, Camera, Music2, Cake, Users, Heart, PartyPopper, BookOpen, UtensilsCrossed, Home as HomeIcon, Car, Palette } from "lucide-react";
 
-// Curated images — only ones that load reliably. Others fall back to a gradient icon.
+// Curated images — all URLs verified to return 200. Unverified/broken fall back to a gradient icon.
+const IMG = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=600&q=70`;
+
 const IMAGE_MAP = {
-  entrance_flowers: "https://images.unsplash.com/photo-1677607787250-1e4e9adf2bdc?auto=format&fit=crop&w=800&q=70",
-  turkish_corner: "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/65200b28b0297ed989ca6b88376d0f9aa9c4c51ce5344af5924fdac6fc7ff5ef.png",
+  entrance_flowers: "https://images.unsplash.com/photo-1677607787250-1e4e9adf2bdc?auto=format&fit=crop&w=600&q=70",
+  civil_arch: IMG("1519225421980-715cb0215aed"),
+  dinner_lighting: IMG("1519741497674-611481863552"),
+  table_decor: IMG("1464366400600-7168b8af9bc3"),
+  cake_corner: IMG("1511285560929-80b456fea0bc"),
   chocolate_fountain: "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/752d4c4a13df0b0a23af0bd571f43285d72a55ee167e9313dc7f5e71cbc7f130.png",
+  photo_corner: IMG("1478146059778-26028b07395a"),
+  photobooth: IMG("1527529482837-4698179dc6ce"),
+  turkish_corner: "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/65200b28b0297ed989ca6b88376d0f9aa9c4c51ce5344af5924fdac6fc7ff5ef.png",
+  ireland_corner: IMG("1529693662653-9d480530a697"),
+  guest_basket: IMG("1531058020387-3be344556be6"),
+  ceremony_water_rice: IMG("1551731409-43eb3e517a1a"),
+  ceremony_live_music: IMG("1465821185615-20b3c2fbf41b"),
+  aperitif_live_music: IMG("1514320291840-2e0a9bf2a9ae"),
+  dj_after_cake: IMG("1470225620780-dba8ba36b745"),
   live_sketching: "https://static.prod-images.emergentagent.com/jobs/844402a1-771b-436a-b066-0fd9d9875b8f/images/28d31a81e15339381491d64dc1249cef93704b21c82ab9b5be2f86403423263d.png",
+  photo_main: IMG("1511795409834-ef04bbd61622"),
+  video_main: IMG("1505118380757-91f5f5632de0"),
+  wedding_menu: IMG("1414235077428-338989a2e8c0"),
+  guest_rooms: IMG("1566073771259-6a8506099945"),
+  invitation_suite: IMG("1530023367847-a683933f4172"),
 };
 
 // Visual theme per category — soft gradient + icon for images that fail or don't exist
