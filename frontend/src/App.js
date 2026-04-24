@@ -10,9 +10,20 @@ import FinalDecisions from "@/pages/FinalDecisions";
 import Tasks from "@/pages/Tasks";
 import Budget from "@/pages/Budget";
 import Settings from "@/pages/Settings";
+import Gate, { useGate } from "@/pages/Gate";
 import { PlannerProvider } from "@/lib/planner-context";
 
 function App() {
+  const { unlocked, unlock } = useGate();
+
+  if (!unlocked) {
+    return (
+      <div className="App">
+        <Gate onUnlock={unlock} />
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <BrowserRouter>
