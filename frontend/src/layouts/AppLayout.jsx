@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Heart, LayoutDashboard, Sparkles, Wand2, Users, ListChecks, Wallet, Settings as SettingsIcon, Scroll } from "lucide-react";
+import { LayoutDashboard, Sparkles, Wand2, Users, ListChecks, Wallet, Settings as SettingsIcon, Scroll } from "lucide-react";
 import { Toaster } from "../components/ui/sonner";
 import { usePlanner } from "../lib/planner-context";
 
@@ -24,13 +24,16 @@ function Sidebar() {
     >
       <div className="px-8 py-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary-soft flex items-center justify-center">
-            <Heart className="w-5 h-5 text-primary" strokeWidth={1.5} />
-          </div>
+          <img
+            src="https://customer-assets.emergentagent.com/job_planner-tool-sana/artifacts/pqvosodt_IMG_4360.jpg"
+            alt="The Cimbri couple"
+            className="w-11 h-11 rounded-full object-cover ring-2 ring-primary-soft"
+            data-testid="sidebar-couple-photo"
+          />
           <div>
-            <p className="eyebrow">Dream Wedding</p>
-            <h3 className="text-xl font-heading leading-none mt-1">
-              {project?.couple_names || "Veronica & You"}
+            <p className="eyebrow">Cimbri</p>
+            <h3 className="text-lg font-heading leading-tight mt-1">
+              Wedding Planner
             </h3>
           </div>
         </div>

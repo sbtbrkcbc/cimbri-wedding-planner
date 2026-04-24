@@ -44,31 +44,44 @@ function Countdown({ days, date, coupleNames, location }) {
     >
       <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-secondary/10 blur-3xl" />
       <div className="absolute right-20 top-10 w-32 h-32 rounded-full bg-accent/10 blur-2xl" />
-      <div className="relative">
-        <p className="eyebrow text-primary">Dream Wedding</p>
-        <h2 className="font-heading text-4xl md:text-6xl mt-3 text-ink leading-tight">
-          {coupleNames}
-        </h2>
-        <p className="text-ink-soft mt-1 italic">{location}</p>
-
-        <div className="mt-8 flex flex-wrap items-end gap-8">
-          <div>
-            <p className="eyebrow text-accent">Countdown</p>
-            <p className="font-heading text-6xl md:text-7xl leading-none mt-2 text-primary">
-              {bigNumber}
-            </p>
-            <p className="text-sm text-ink-soft mt-2">{label}</p>
+      <div className="relative flex flex-col md:flex-row md:items-center gap-8">
+        <div className="shrink-0">
+          <div className="relative w-28 h-28 md:w-36 md:h-36">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 blur-xl" />
+            <img
+              src="https://customer-assets.emergentagent.com/job_planner-tool-sana/artifacts/pqvosodt_IMG_4360.jpg"
+              alt="The Cimbri couple"
+              className="relative w-28 h-28 md:w-36 md:h-36 rounded-full object-cover ring-4 ring-surface shadow-soft"
+              data-testid="dashboard-couple-photo"
+            />
           </div>
-          {date && (
-            <div className="pb-2">
-              <p className="eyebrow">The day</p>
-              <p className="text-lg font-medium mt-1">
-                {new Date(date).toLocaleDateString("en-GB", {
-                  weekday: "long", day: "numeric", month: "long", year: "numeric",
-                })}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="eyebrow text-primary">Cimbri Wedding</p>
+          <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl mt-2 text-ink leading-tight">
+            {coupleNames}
+          </h2>
+          <p className="text-ink-soft mt-1 italic">{location}</p>
+
+          <div className="mt-6 flex flex-wrap items-end gap-8">
+            <div>
+              <p className="eyebrow text-accent">Countdown</p>
+              <p className="font-heading text-5xl md:text-6xl leading-none mt-2 text-primary">
+                {bigNumber}
               </p>
+              <p className="text-sm text-ink-soft mt-2">{label}</p>
             </div>
-          )}
+            {date && (
+              <div className="pb-2">
+                <p className="eyebrow">The day</p>
+                <p className="text-base font-medium mt-1">
+                  {new Date(date).toLocaleDateString("en-GB", {
+                    weekday: "long", day: "numeric", month: "long", year: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

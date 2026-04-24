@@ -15,7 +15,7 @@ def _sid():
 
 DEFAULT_PROJECT = {
     "id": "singleton",
-    "couple_names": "Veronica & You",
+    "couple_names": "The Cimbri Wedding",
     "wedding_date": None,
     "location": "Cuneo, Piedmont — Italy",
     "guest_count": 50,
