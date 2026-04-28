@@ -58,7 +58,7 @@ export default function Gate({ onUnlock }) {
             <div className="relative w-32 h-32 mx-auto">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 blur-xl" />
               <img
-                src="https://customer-assets.emergentagent.com/job_planner-tool-sana/artifacts/pqvosodt_IMG_4360.jpg"
+                src="/photos/couple.jpg"
                 alt="Burak & Veronica"
                 className="relative w-32 h-32 rounded-full object-cover ring-4 ring-surface shadow-soft"
                 data-testid="gate-couple-photo"

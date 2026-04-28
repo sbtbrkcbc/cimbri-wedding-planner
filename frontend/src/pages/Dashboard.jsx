@@ -49,7 +49,7 @@ function Countdown({ days, date, coupleNames, location }) {
           <div className="relative w-28 h-28 md:w-36 md:h-36">
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 blur-xl" />
             <img
-              src="https://customer-assets.emergentagent.com/job_planner-tool-sana/artifacts/pqvosodt_IMG_4360.jpg"
+              src="/photos/couple.jpg"
               alt="The Cimbri couple"
               className="relative w-28 h-28 md:w-36 md:h-36 rounded-full object-cover ring-4 ring-surface shadow-soft"
               data-testid="dashboard-couple-photo"

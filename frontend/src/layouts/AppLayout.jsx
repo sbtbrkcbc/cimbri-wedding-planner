@@ -25,7 +25,7 @@ function Sidebar() {
       <div className="px-8 py-8">
         <div className="flex items-center gap-3">
           <img
-            src="https://customer-assets.emergentagent.com/job_planner-tool-sana/artifacts/pqvosodt_IMG_4360.jpg"
+            src="/photos/couple.jpg"
             alt="The Cimbri couple"
             className="w-11 h-11 rounded-full object-cover ring-2 ring-primary-soft"
             data-testid="sidebar-couple-photo"
