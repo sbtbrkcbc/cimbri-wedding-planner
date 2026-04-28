@@ -13,8 +13,10 @@ export const api = {
   getProject: () => http.get("/project").then((r) => r.data),
   updateProject: (patch) => http.put("/project", patch).then((r) => r.data),
 
-  // constants
+  // categories
   getCategories: () => http.get("/dream-categories").then((r) => r.data),
+  createCategory: (data) => http.post("/dream-categories", data).then((r) => r.data),
+  deleteCategory: (id) => http.delete(`/dream-categories/${id}`).then((r) => r.data),
   getGoals: () => http.get("/dream-goals").then((r) => r.data),
 
   // vendors

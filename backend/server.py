@@ -238,10 +238,69 @@ async def update_project(update: ProjectUpdate):
     return Project(**doc)
 
 
-# ---- Categories & Goals (static) ----
+# ---- Categories & Goals ----
+class CategoryCreate(BaseModel):
+    name: str
+    description: str = ""
+    color: Literal["sage", "rose", "gold"] = "sage"
+
+
+async def _seed_categories_if_missing():
+    """Seed the canonical DREAM_CATEGORIES into DB, preserving their ids."""
+    for c in DREAM_CATEGORIES:
+        exists = await db.categories.find_one({"id": c["id"]}, {"_id": 0})
+        if not exists:
+            await db.categories.insert_one({**c, "custom": False})
+
+
 @api_router.get("/dream-categories")
 async def get_categories():
-    return DREAM_CATEGORIES
+    await _seed_categories_if_missing()
+    cats = await db.categories.find({}, {"_id": 0}).to_list(1000)
+    # Keep canonical ones first in their defined order, then custom ones alphabetically
+    canonical_order = {c["id"]: i for i, c in enumerate(DREAM_CATEGORIES)}
+    cats.sort(key=lambda c: (
+        0 if c["id"] in canonical_order else 1,
+        canonical_order.get(c["id"], 9999),
+        c.get("name", "").lower(),
+    ))
+    return cats
+
+
+@api_router.post("/dream-categories")
+async def create_category(payload: CategoryCreate):
+    import re
+    base_id = re.sub(r"[^a-z0-9]+", "_", payload.name.lower()).strip("_")[:40] or str(uuid.uuid4())[:8]
+    cid = base_id
+    i = 1
+    while await db.categories.find_one({"id": cid}):
+        cid = f"{base_id}_{i}"
+        i += 1
+    doc = {
+        "id": cid,
+        "name": payload.name,
+        "description": payload.description,
+        "color": payload.color,
+        "custom": True,
+    }
+    await db.categories.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api_router.delete("/dream-categories/{cat_id}")
+async def delete_category(cat_id: str):
+    cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    if not cat.get("custom"):
+        raise HTTPException(400, "Built-in categories cannot be removed.")
+    # Block if in use
+    in_use_vendor = await db.vendors.find_one({"categories": cat_id})
+    in_use_sel = await db.selections.find_one({"category": cat_id})
+    if in_use_vendor or in_use_sel:
+        raise HTTPException(400, "This category is still used by a vendor or selection.")
+    await db.categories.delete_one({"id": cat_id})
+    return {"ok": True}
 
 
 @api_router.get("/dream-goals")

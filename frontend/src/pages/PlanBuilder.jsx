@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, Sparkles, Wand2, Users, Package, ClipboardList, Heart } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles, Wand2, Users, Package, ClipboardList, Heart, Plus } from "lucide-react";
 
 const STEPS = [
   { key: "category", label: "Category", icon: Sparkles },
@@ -160,6 +161,31 @@ export default function PlanBuilder() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // New category dialog
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCat, setNewCat] = useState({ name: "", description: "", color: "sage" });
+  const [creatingCat, setCreatingCat] = useState(false);
+
+  const handleCreateCategory = async () => {
+    if (!newCat.name.trim()) return;
+    try {
+      setCreatingCat(true);
+      const created = await api.createCategory(newCat);
+      await refresh();
+      setCategory(created);
+      setGoal(null);
+      setVendor(null);
+      setServices([]);
+      setNewCatOpen(false);
+      setNewCat({ name: "", description: "", color: "sage" });
+      toast.success(`Added "${created.name}" — selected for this plan.`);
+    } catch (e) {
+      toast.error("Couldn't add the category.");
+    } finally {
+      setCreatingCat(false);
+    }
+  };
+
   const filteredGoals = useMemo(
     () => goals.filter((g) => !category || g.category === category.id),
     [goals, category]
@@ -272,19 +298,37 @@ export default function PlanBuilder() {
       <div className="grid lg:grid-cols-[1fr_320px] gap-8">
         <div className="space-y-6">
           {step === 0 && (
-            <ChoiceGrid
-              items={categories}
-              selected={category}
-              onPick={(c) => { setCategory(c); setGoal(null); setVendor(null); setServices([]); }}
-              renderItem={(c) => (
-                <>
-                  <p className="eyebrow">{c.color} moment</p>
-                  <h4 className="font-heading text-xl mt-1">{c.name}</h4>
-                  <p className="text-sm text-ink-soft mt-2">{c.description}</p>
-                </>
-              )}
-              empty="No categories yet."
-            />
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setCategory(c); setGoal(null); setVendor(null); setServices([]); }}
+                    data-testid={`choice-${c.id}`}
+                    className={`text-left panel-interactive p-5 transition-all ${
+                      category?.id === c.id ? "ring-2 ring-primary border-primary" : ""
+                    }`}
+                  >
+                    <p className="eyebrow">{c.custom ? "custom" : c.color} moment</p>
+                    <h4 className="font-heading text-xl mt-1">{c.name}</h4>
+                    <p className="text-sm text-ink-soft mt-2">{c.description}</p>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setNewCatOpen(true)}
+                  data-testid="add-new-category"
+                  className="text-left p-5 rounded-2xl border-2 border-dashed border-border hover:border-primary hover:bg-primary-soft/40 transition-all flex flex-col items-center justify-center text-center min-h-[140px] group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary-soft text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                    <Plus className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <h4 className="font-heading text-lg mt-3">Add your own</h4>
+                  <p className="text-xs text-ink-muted mt-1">A moment that's uniquely yours.</p>
+                </button>
+              </div>
+            </>
           )}
 
           {step === 1 && (
@@ -476,6 +520,59 @@ export default function PlanBuilder() {
           project={project}
         />
       </div>
+
+      <Dialog open={newCatOpen} onOpenChange={setNewCatOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl">A category of your own</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 mt-2">
+            <div>
+              <Label>Name</Label>
+              <Input
+                data-testid="new-category-name"
+                value={newCat.name}
+                onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
+                placeholder="e.g. Honeymoon, Bridal suite, Wedding favors"
+                className="mt-2 rounded-xl"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Short description (optional)</Label>
+              <Textarea
+                value={newCat.description}
+                onChange={(e) => setNewCat({ ...newCat, description: e.target.value })}
+                placeholder="What this category is about…"
+                rows={2}
+                className="mt-2 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label>Vibe color</Label>
+              <Select value={newCat.color} onValueChange={(v) => setNewCat({ ...newCat, color: v })}>
+                <SelectTrigger className="mt-2 rounded-xl h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sage">Sage green</SelectItem>
+                  <SelectItem value="rose">Dusty rose</SelectItem>
+                  <SelectItem value="gold">Muted gold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setNewCatOpen(false)} className="rounded-full">Cancel</Button>
+            <Button
+              onClick={handleCreateCategory}
+              disabled={!newCat.name.trim() || creatingCat}
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              data-testid="save-new-category"
+            >
+              {creatingCat ? "Adding…" : "Add category"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
