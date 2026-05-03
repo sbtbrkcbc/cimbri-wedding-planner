@@ -12,7 +12,7 @@ from typing import List, Optional, Literal
 import uuid
 from datetime import datetime, timezone, date
 
-from seed_data import SEED_VENDORS, SEED_TASKS, DREAM_CATEGORIES, DREAM_GOALS, DEFAULT_PROJECT
+from seed_data import SEED_VENDORS, SEED_TASKS, SEED_SELECTIONS, DREAM_CATEGORIES, DREAM_GOALS, DEFAULT_PROJECT
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -302,7 +302,9 @@ async def _seed_categories_if_missing():
         for c in DREAM_CATEGORIES:
             exists = await db.categories.find_one({"id": c["id"]}, {"_id": 0})
             if not exists:
-                await db.categories.insert_one({**c, "custom": False})
+                payload = {**c}
+                payload.setdefault("custom", False)
+                await db.categories.insert_one(payload)
         _categories_seeded = True
     except Exception as e:
         logger.warning(f"Category seed skipped: {e}")
@@ -389,7 +391,9 @@ async def _seed_goals_if_missing():
         for g in DREAM_GOALS:
             exists = await db.goals.find_one({"id": g["id"]}, {"_id": 0})
             if not exists:
-                await db.goals.insert_one({**g, "custom": False})
+                payload = {**g}
+                payload.setdefault("custom", False)
+                await db.goals.insert_one(payload)
         _goals_seeded = True
     except Exception as e:
         logger.warning(f"Goal seed skipped: {e}")
@@ -713,6 +717,15 @@ async def _run_seed(reset: bool = False):
     if tasks_count == 0:
         for t in SEED_TASKS:
             await db.tasks.insert_one(Task(**t).model_dump())
+
+    # Seed selections if empty
+    selections_count = await db.selections.count_documents({})
+    if selections_count == 0 and SEED_SELECTIONS:
+        for s in SEED_SELECTIONS:
+            try:
+                await db.selections.insert_one(Selection(**s).model_dump())
+            except Exception as e:
+                logger.warning(f"Skipped selection seed: {e}")
 
     return {"ok": True, "seeded": True}
 
