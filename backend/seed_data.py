@@ -1,12 +1,9 @@
-"""Seed data for Veronica's Dream Wedding planner.
-All values and notes come from Veronica's planning document.
+"""Seed data for Cimbri Wedding Planner.
+Values come from Veronica's planning notes and the master vendor document.
+This file is the single source of truth for fresh deployments.
 """
 import uuid
 from datetime import datetime, timezone, timedelta
-
-
-def _iso(d):
-    return d.isoformat()
 
 
 def _sid():
@@ -46,7 +43,7 @@ DREAM_CATEGORIES = [
 ]
 
 
-# Dream goals — emotional/visual intentions pulled straight from Veronica's list
+# Dream goals — emotional/visual intentions pulled from Veronica's list
 DREAM_GOALS = [
     {"id": "entrance_flowers", "name": "Entrance with flowers & ribbons", "category": "florals", "description": "A beautiful arrival feeling for guests — staircase styled with flowers and colored ribbons."},
     {"id": "civil_arch", "name": "Decorated civil rite arch", "category": "florals", "description": "A floral arch for the ceremony — or styling the venue's existing wooden structure."},
@@ -88,12 +85,13 @@ def _s(name, category, price_type, unit_price, deposit=0.0, description="", note
 
 
 SEED_VENDORS = [
+    # ───────── 1. La Locanda del Nocciolo ─────────
     {
         "id": "vendor-locanda-nocciolo",
         "name": "La Locanda del Nocciolo",
         "categories": ["venue", "accommodation", "cake"],
         "contact_person": "Danila Rossi",
-        "phone": "+39 338 894 9541",
+        "phone": "+39 338 894 9541 (Danila) / +39 0173 731323 (venue)",
         "email": "",
         "website": "",
         "instagram": "",
@@ -125,6 +123,7 @@ SEED_VENDORS = [
                "Handwritten note: GRATUITO (appears to be offered free).", ""),
         ],
     },
+    # ───────── 2. Symon Mattio ─────────
     {
         "id": "vendor-symon-mattio",
         "name": "Symon Mattio — Flower by Sym",
@@ -151,6 +150,7 @@ SEED_VENDORS = [
                "Lanterns and floral accents for the cake moment.", "", dream_goal="cake_corner"),
         ],
     },
+    # ───────── 3. Davide Giuseppe Tolis ─────────
     {
         "id": "vendor-davide-tolis",
         "name": "Davide Giuseppe Tolis — Il fotografo di matrimoni",
@@ -169,6 +169,7 @@ SEED_VENDORS = [
                dream_goal="photo_main"),
         ],
     },
+    # ───────── 4. Max / Maximilliano ─────────
     {
         "id": "vendor-max-maxi",
         "name": "Max / Maximilliano — Photography",
@@ -191,6 +192,7 @@ SEED_VENDORS = [
                "Audio, vows, preparations and party footage.", "", dream_goal="video_main"),
         ],
     },
+    # ───────── 5. Sonia Ricci ─────────
     {
         "id": "vendor-sonia-ricci",
         "name": "Sonia Ricci — Live Sketching",
@@ -201,7 +203,7 @@ SEED_VENDORS = [
         "website": "",
         "instagram": "",
         "location": "",
-        "notes": "Live sketching can double as entertainment and a keepsake. Styles: contemporary fashion sketch or romantic watercolor. Can finish portraits later in studio. Also does full stationery suite. Free no-obligation sample sketch on request.",
+        "notes": "Live sketching can double as entertainment and a keepsake. Styles: contemporary fashion sketch, watercolor, romantic/traditional. 6-10 minutes per couple sketch. Service is manageable for 30-47 guests; typically works from aperitif onward. Sketch cards kept simple and neutral. Can finish portraits later in studio. Also does full stationery suite. Free no-obligation sample sketch on request. ~€300 total with transport.",
         "status": "shortlisted",
         "services": [
             _s("Live sketching — base (2.5h)", "live_art", "fixed", 250.0, 0.0,
@@ -217,6 +219,7 @@ SEED_VENDORS = [
                "Studio-created portrait after the wedding.", ""),
         ],
     },
+    # ───────── 6. Heart of Gold ─────────
     {
         "id": "vendor-heart-of-gold",
         "name": "Heart of Gold — Music",
@@ -245,6 +248,158 @@ SEED_VENDORS = [
                "Full band + DJ — the complete package.", "", dream_goal="dj_after_cake"),
         ],
     },
+    # ───────── 7. Enzo Granieri / Fotografando ─────────
+    {
+        "id": "vendor-enzo-fotografando",
+        "name": "Enzo Granieri — Fotografando",
+        "categories": ["photography", "video"],
+        "contact_person": "Enzo Granieri",
+        "phone": "+39 011 949 2105 / +39 347 565 3513",
+        "email": "fotografando.santena@gmail.com",
+        "website": "www.fotografandosantena.it",
+        "instagram": "",
+        "location": "Via Cavour 48/A, Santena",
+        "notes": "Style: spontaneous, natural, largely not posed. Payment can be divided into 3 installments.",
+        "status": "shortlisted",
+        "services": [
+            _s("Photography — files only (high-res)", "photography", "fixed", 650.0, 0.0,
+               "All wedding-day photos in high resolution.",
+               "Payment in 3 installments possible.", dream_goal="photo_main"),
+            _s("Photography + eco-leather album", "photography", "fixed", 1150.0, 0.0,
+               "Eco-leather photo book (25x35 or 30x30), 80 post-produced photos with personalized design, 3 selected posters, all wedding-day photos in high resolution.",
+               "Payment in 3 installments possible.", dream_goal="photo_main"),
+            _s("Wedding video (USB delivery)", "video", "fixed", 550.0, 0.0,
+               "Filming from preparation at home, discreet and non-invasive, with edited soundtrack chosen by you, delivered on USB.", "",
+               dream_goal="video_main"),
+            _s("Drone add-on", "video", "fixed", 150.0, 0.0,
+               "Drone photography/videography where permitted.", ""),
+        ],
+    },
+    # ───────── 8. Royal Music / Lorenzo Bongiovanni ─────────
+    {
+        "id": "vendor-royal-music",
+        "name": "Royal Music — Lorenzo Bongiovanni",
+        "categories": ["music_ceremony", "music_aperitif", "music_dinner", "music_dj"],
+        "contact_person": "Lorenzo Bongiovanni",
+        "phone": "+39 393 485 7805",
+        "email": "royalmusic.lb@gmail.com",
+        "website": "www.royalmusic.it",
+        "instagram": "",
+        "location": "",
+        "notes": "Quote validity: 28/05/2026. 50% or 100% deposit to confirm date and block musicians. Remaining balance due 2 weeks before the wedding. Offers Irish, Turkish, and Italian classics/dance music. Packages cover ceremony, aperitif, dinner, after-dinner DJ with different formations.",
+        "status": "shortlisted",
+        "services": [
+            _s("Base Pack — piano + violin/voice", "music_ceremony", "fixed", 999.0, 500.0,
+               "Live ceremony + live aperitif + dinner playlist + after-dinner DJ.",
+               "Formation: piano + violin/voice.", dream_goal="ceremony_live_music"),
+            _s("Pack — piano + violin + voice", "music_ceremony", "fixed", 1299.0, 650.0,
+               "Live ceremony + live aperitif + dinner playlist + after-dinner DJ.",
+               "Formation: piano + violin + voice.", dream_goal="ceremony_live_music"),
+            _s("Pack Plus — piano + violin + voice + guitar", "music_ceremony", "fixed", 1599.0, 800.0,
+               "Full live coverage: ceremony + aperitif + dinner playlist + after-dinner DJ.",
+               "Formation: piano + violin + voice + guitar.", dream_goal="ceremony_live_music"),
+            _s("DJ Set PRO add-on (after dinner)", "music_dj", "fixed", 399.0, 0.0,
+               "Enhanced DJ set.", "", dream_goal="dj_after_cake"),
+            _s("Celtic Dances (up to 60 min)", "music_dj", "fixed", 399.0, 0.0,
+               "Live performance of Celtic dances — perfect for the Irish side of the celebration.", ""),
+            _s("Live interventions between dinner courses", "music_dinner", "fixed", 299.0, 0.0,
+               "Live musical moments between courses.",
+               "€299 in base packs, €399 in premium pack."),
+            _s("Vintage warm lamp (each)", "florals", "per_unit", 49.0, 0.0,
+               "Decorative warm vintage lamp.", ""),
+            _s("6 Sparkular light fountains", "music_dj", "fixed", 699.0, 0.0,
+               "Cold sparkler effect for cake cutting / first dance / grand moments.", "",
+               dream_goal="cake_corner"),
+            _s("Audio station (1)", "music_aperitif", "fixed", 149.0, 0.0,
+               "Sound system rental. 2 stations: €299 · 3 stations: €399 · 4 stations: €449.", ""),
+            _s("Wireless microphone (per station)", "music_ceremony", "fixed", 79.0, 0.0,
+               "Microphone rental.", ""),
+            _s("Vertical piano rental (tuning on site)", "music_ceremony", "fixed", 599.0, 0.0,
+               "Piano rental with on-site tuning.", ""),
+            _s("4K projector + 84-inch screen", "music_dj", "fixed", 149.0, 0.0,
+               "Audio-visual equipment for photo/video slideshow.", ""),
+        ],
+    },
+    # ───────── 9. Music Love Dual Band ─────────
+    {
+        "id": "vendor-music-love",
+        "name": "Music Love Dual Band",
+        "categories": ["music_ceremony", "music_aperitif", "music_dinner", "music_dj"],
+        "contact_person": "",
+        "phone": "",
+        "email": "",
+        "website": "",
+        "instagram": "",
+        "location": "",
+        "notes": "Looks cheaper up front, but Agibilità, SIAE, Soundreef, VAT are NOT included — real total will be higher. Confirmed by WhatsApp quote.",
+        "status": "contacted",
+        "services": [
+            _s("Pack Duo — Live Music + DJ Set", "music_dj", "fixed", 800.0, 0.0,
+               "2 audio stations. Live aperitif with ukulele, male voice, female voice. Playlist during meal. Musical interludes between courses. ~1h30 live music (1970s-disco style). DJ set. Civil rite music included as gift (value ~€250).",
+               "Base price. EXCLUDES Agibilità, SIAE, Soundreef, VAT — real total will be higher.",
+               dream_goal="aperitif_live_music"),
+        ],
+    },
+    # ───────── 10. Joseph / Josef placeholder ─────────
+    {
+        "id": "vendor-joseph-tbc",
+        "name": "Joseph / Josef (to be confirmed)",
+        "categories": ["photography", "video", "music_dj"],
+        "contact_person": "Joseph / Josef (introducer)",
+        "phone": "",
+        "email": "",
+        "website": "",
+        "instagram": "",
+        "location": "",
+        "notes": "⚠️ NAME TO BE CONFIRMED — waiting to check with Veronica. Notes mention ~€3000 and ~€2200 all-in price variants, not certain. Full bundle: photo + album + video + drone + potential DJ connections. Transport seems included. Photo/video style customizable. Notes also mention: hidden-battery speakers, no visible wires, ceremony music, fog machine, lights, games, projection — likely overlaps with a music/technical vendor.",
+        "status": "new",
+        "services": [
+            _s("Full photo + video bundle (option A ~€3000)", "photography", "fixed", 3000.0, 0.0,
+               "Estimated price from handwritten notes — full bundle: photo + album + video + drone.",
+               "⚠️ Price not confirmed — waiting for quote.", dream_goal="photo_main"),
+            _s("Full photo + video bundle (option B ~€2200 all-in)", "photography", "fixed", 2200.0, 0.0,
+               "Alternative all-in package from notes.",
+               "⚠️ Price not confirmed — waiting for quote."),
+        ],
+    },
+    # ───────── 11. Music Vendor A placeholder ─────────
+    {
+        "id": "vendor-music-a-tbc",
+        "name": "Music Vendor A (name to confirm)",
+        "categories": ["music_ceremony", "music_aperitif", "music_dinner", "music_dj"],
+        "contact_person": "",
+        "phone": "",
+        "email": "",
+        "website": "",
+        "instagram": "",
+        "location": "",
+        "notes": "⚠️ NAME TO BE CONFIRMED. 3-4 person formation (piano + violin + voice for ceremony, guitar for aperitif). 2 DJ sets / moments. Couple can provide own playlist. Live ceremony music, live aperitif, softer dinner music, DJ for ~3 hours. VAT appears included.",
+        "status": "new",
+        "services": [
+            _s("Full day music flow (ceremony → DJ)", "music_ceremony", "custom", 0.0, 0.0,
+               "Ceremony + aperitif + dinner + DJ (~3 hours). Formation: 3-4 people (piano + violin + voice + aperitif guitar).",
+               "⚠️ Price not confirmed — waiting for quote.", dream_goal="ceremony_live_music"),
+        ],
+    },
+    # ───────── 12. Music Vendor B placeholder ─────────
+    {
+        "id": "vendor-music-b-tbc",
+        "name": "Music Vendor B (name to confirm)",
+        "categories": ["music_ceremony", "music_aperitif", "music_dinner", "music_dj"],
+        "contact_person": "",
+        "phone": "",
+        "email": "",
+        "website": "",
+        "instagram": "",
+        "location": "",
+        "notes": "⚠️ NAME TO BE CONFIRMED. Pop-style live music package: ceremony + aperitif + dinner + DJ. Duo/trio or full band options. Extra instruments can be added. Travel/transport may be calculated separately. Timing flexibility if they go slightly over.",
+        "status": "new",
+        "services": [
+            _s("Live band — pop genre (customizable)", "music_dj", "custom", 0.0, 0.0,
+               "Ceremony + aperitif + dinner + DJ set. Pop-focused. Duo/trio/full band variations.",
+               "⚠️ Price and identity to be confirmed."),
+        ],
+    },
 ]
 
 
@@ -257,10 +412,11 @@ SEED_TASKS = [
      "notes": "Ask about Beyti or Lahmacun; mark pork & wine dishes.", "due_date": _days(30)},
     {"title": "Confirm final guest count (2 weeks before)", "category": "venue", "priority": "high", "status": "todo",
      "notes": "Final count no later than 2 weeks before the event.", "due_date": _days(60)},
-    {"title": "Book photographer — decide Davide or Max", "category": "photography", "priority": "high",
-     "status": "todo", "notes": "Compare quotes and portfolios.", "due_date": _days(20)},
-    {"title": "Choose music package (Heart of Gold)", "category": "music_dj", "priority": "medium", "status": "todo",
-     "notes": "Compare duo / trio / trio + violin options.", "due_date": _days(25)},
+    {"title": "Book photographer — decide Davide / Max / Enzo", "category": "photography", "priority": "high",
+     "status": "todo", "notes": "Compare quotes and portfolios across all 3.", "due_date": _days(20)},
+    {"title": "Choose music package — Heart of Gold / Royal Music / Music Love", "category": "music_dj",
+     "priority": "high", "status": "todo",
+     "notes": "Compare formations and total all-in price (incl. SIAE, VAT).", "due_date": _days(25)},
     {"title": "Confirm florist — Symon Mattio", "category": "florals", "priority": "medium", "status": "todo",
      "notes": "Share palette, venue photos, dream items.", "due_date": _days(35)},
     {"title": "Design Turkish corner", "category": "guest_corners", "priority": "low", "status": "todo",
@@ -273,4 +429,7 @@ SEED_TASKS = [
      "status": "todo", "notes": "Relevant if we hire a pianist.", "due_date": _days(15)},
     {"title": "Request Sonia Ricci sample sketch", "category": "live_art", "priority": "low", "status": "todo",
      "notes": "Free no-obligation sketch offered.", "due_date": _days(10)},
+    {"title": "Clarify Joseph/Josef vendor name & quote", "category": "photography", "priority": "medium",
+     "status": "todo", "notes": "Need to confirm exact business name and pricing with Veronica.",
+     "due_date": _days(14)},
 ]

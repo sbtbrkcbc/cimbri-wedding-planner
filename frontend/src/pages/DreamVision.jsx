@@ -1,10 +1,19 @@
 import React, { useMemo, useState } from "react";
 import { PageContainer, PageHeader } from "@/components/page-shell";
 import { usePlanner } from "@/lib/planner-context";
-import { formatEUR } from "@/lib/api";
-import { Sparkles, Check, CircleDashed, Flower2, Camera, Music2, Cake, Users, Heart, PartyPopper, BookOpen, UtensilsCrossed, Home as HomeIcon, Car, Palette } from "lucide-react";
+import { api, formatEUR } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  Sparkles, Check, CircleDashed, Flower2, Camera, Music2, Cake, Heart, PartyPopper,
+  BookOpen, UtensilsCrossed, Home as HomeIcon, Car, Palette, Plus, Trash2,
+} from "lucide-react";
 
-// Curated images — all URLs verified to return 200. Unverified/broken fall back to a gradient icon.
 const IMG = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=600&q=70`;
 
 const IMAGE_MAP = {
@@ -31,7 +40,6 @@ const IMAGE_MAP = {
   invitation_suite: IMG("1530023367847-a683933f4172"),
 };
 
-// Visual theme per category — soft gradient + icon for images that fail or don't exist
 const CATEGORY_THEME = {
   florals: { gradient: "from-secondary-soft to-secondary/30", Icon: Flower2 },
   photography: { gradient: "from-accent-soft to-accent/30", Icon: Camera },
@@ -51,7 +59,7 @@ const CATEGORY_THEME = {
   other: { gradient: "from-muted to-primary-soft", Icon: Sparkles },
 };
 
-function GoalCard({ goal, selections }) {
+function GoalCard({ goal, selections, onDelete }) {
   const [imgFailed, setImgFailed] = useState(false);
 
   const linked = (selections || []).filter((s) => s.dream_goal === goal.id);
@@ -73,9 +81,20 @@ function GoalCard({ goal, selections }) {
 
   return (
     <article
-      className="panel-interactive overflow-hidden flex flex-col group"
+      className="panel-interactive overflow-hidden flex flex-col group relative"
       data-testid={`dream-goal-${goal.id}`}
     >
+      {goal.custom && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(goal); }}
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-surface/90 backdrop-blur text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground"
+          title="Remove this dream"
+          data-testid={`delete-goal-${goal.id}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
       <div className="aspect-square relative overflow-hidden">
         {showImage ? (
           <img
@@ -114,8 +133,29 @@ function GoalCard({ goal, selections }) {
   );
 }
 
+function AddDreamCard({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="add-dream-goal"
+      className="aspect-square w-full rounded-2xl border-2 border-dashed border-border hover:border-primary hover:bg-primary-soft/40 transition-all flex flex-col items-center justify-center text-center group p-4"
+    >
+      <div className="w-10 h-10 rounded-full bg-primary-soft text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+        <Plus className="w-5 h-5" strokeWidth={2} />
+      </div>
+      <h3 className="font-heading text-base mt-3">Add a dream</h3>
+      <p className="text-xs text-ink-muted mt-1">A moment of your own.</p>
+    </button>
+  );
+}
+
 export default function DreamVision() {
-  const { goals, categories, selections, loading } = usePlanner();
+  const { goals, categories, selections, refresh, loading } = usePlanner();
+
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name: "", category: "", description: "" });
 
   const grouped = useMemo(() => {
     const map = {};
@@ -126,34 +166,170 @@ export default function DreamVision() {
     return map;
   }, [goals]);
 
+  const openFor = (catId) => {
+    setForm({ name: "", category: catId || "", description: "" });
+    setOpen(true);
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim() || !form.category) {
+      toast.error("Please give it a name and a category.");
+      return;
+    }
+    try {
+      setCreating(true);
+      await api.createGoal(form);
+      toast.success(`"${form.name}" added to your dream vision.`);
+      setOpen(false);
+      await refresh();
+    } catch (e) {
+      toast.error("Couldn't add that dream.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (g) => {
+    if (!confirm(`Remove "${g.name}" from your dream vision?`)) return;
+    try {
+      await api.deleteGoal(g.id);
+      toast.success("Removed.");
+      await refresh();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn't remove this dream.");
+    }
+  };
+
   if (loading) {
     return <PageContainer><p className="text-ink-muted">Loading dream board…</p></PageContainer>;
   }
+
+  // Categories that have goals (so we render section per category) plus "Other" for orphans
+  const visibleCategoryIds = Object.keys(grouped);
+  const categoriesToShow = categories.filter((c) => visibleCategoryIds.includes(c.id));
+  // Add categories present in grouped but not in canonical list (custom user categories)
+  const customCatIds = visibleCategoryIds.filter(
+    (id) => !categories.some((c) => c.id === id)
+  );
 
   return (
     <PageContainer>
       <PageHeader
         eyebrow="The feeling of the day"
         title="Your dream vision."
-        description="The little intentions that make the day feel like yours — browse at your own pace."
+        description="The little intentions that make the day feel like yours — browse at your own pace, and add your own."
         testId="dream-vision-header"
-      />
+      >
+        <Button
+          onClick={() => openFor(null)}
+          className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-6"
+          data-testid="add-dream-btn-top"
+        >
+          <Plus className="w-4 h-4" /> Add a dream
+        </Button>
+      </PageHeader>
 
-      {Object.entries(grouped).map(([catId, goalList]) => {
-        const cat = categories.find((c) => c.id === catId);
+      {categoriesToShow.map((cat) => {
+        const goalList = grouped[cat.id];
         return (
-          <section key={catId} className="mb-12" data-testid={`dream-section-${catId}`}>
-            <div className="mb-4">
-              <p className="eyebrow">{cat?.name || catId}</p>
+          <section key={cat.id} className="mb-12" data-testid={`dream-section-${cat.id}`}>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="eyebrow">{cat.name}</p>
+              <button
+                type="button"
+                onClick={() => openFor(cat.id)}
+                className="text-xs text-primary hover:underline"
+                data-testid={`add-to-${cat.id}`}
+              >
+                + Add to this section
+              </button>
             </div>
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {goalList.map((g) => (
-                <GoalCard key={g.id} goal={g} selections={selections} />
+                <GoalCard key={g.id} goal={g} selections={selections} onDelete={handleDelete} />
               ))}
             </div>
           </section>
         );
       })}
+
+      {customCatIds.length > 0 && customCatIds.map((cid) => {
+        const goalList = grouped[cid];
+        return (
+          <section key={cid} className="mb-12">
+            <div className="mb-4">
+              <p className="eyebrow">{cid}</p>
+            </div>
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {goalList.map((g) => (
+                <GoalCard key={g.id} goal={g} selections={selections} onDelete={handleDelete} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* CTA card at the bottom always */}
+      <section className="mb-12">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <AddDreamCard onClick={() => openFor(null)} />
+        </div>
+      </section>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl">A dream of your own</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 mt-2">
+            <div>
+              <Label>What is it?</Label>
+              <Input
+                data-testid="new-goal-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Vintage Vespa for arrival, Lavender ceremony toss"
+                className="mt-2 rounded-xl"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Which moment of the day?</Label>
+              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                <SelectTrigger data-testid="new-goal-category" className="mt-2 rounded-xl h-11">
+                  <SelectValue placeholder="Pick a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Why does it matter (optional)</Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={3}
+                placeholder="The feeling, the visual, the why…"
+                className="mt-2 rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setOpen(false)} className="rounded-full">Cancel</Button>
+            <Button
+              onClick={handleCreate}
+              disabled={creating || !form.name.trim() || !form.category}
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              data-testid="save-new-goal"
+            >
+              {creating ? "Adding…" : "Add to my vision"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

@@ -18,6 +18,8 @@ export const api = {
   createCategory: (data) => http.post("/dream-categories", data).then((r) => r.data),
   deleteCategory: (id) => http.delete(`/dream-categories/${id}`).then((r) => r.data),
   getGoals: () => http.get("/dream-goals").then((r) => r.data),
+  createGoal: (data) => http.post("/dream-goals", data).then((r) => r.data),
+  deleteGoal: (id) => http.delete(`/dream-goals/${id}`).then((r) => r.data),
 
   // vendors
   listVendors: () => http.get("/vendors").then((r) => r.data),

@@ -360,7 +360,74 @@ async def delete_category(cat_id: str):
 
 @api_router.get("/dream-goals")
 async def get_goals():
-    return DREAM_GOALS
+    await _seed_goals_if_missing()
+    goals = await db.goals.find({}, {"_id": 0}).to_list(200)
+    canonical_order = {g["id"]: i for i, g in enumerate(DREAM_GOALS)}
+    goals.sort(key=lambda g: (
+        0 if g["id"] in canonical_order else 1,
+        canonical_order.get(g["id"], 9999),
+        g.get("name", "").lower(),
+    ))
+    return goals
+
+
+class GoalCreate(BaseModel):
+    name: str
+    category: str
+    description: str = ""
+
+
+_goals_seeded = False
+
+
+async def _seed_goals_if_missing():
+    """Seed canonical DREAM_GOALS into DB once per process."""
+    global _goals_seeded
+    if _goals_seeded:
+        return
+    try:
+        for g in DREAM_GOALS:
+            exists = await db.goals.find_one({"id": g["id"]}, {"_id": 0})
+            if not exists:
+                await db.goals.insert_one({**g, "custom": False})
+        _goals_seeded = True
+    except Exception as e:
+        logger.warning(f"Goal seed skipped: {e}")
+
+
+@api_router.post("/dream-goals")
+async def create_goal(payload: GoalCreate):
+    import re
+    base_id = re.sub(r"[^a-z0-9]+", "_", payload.name.lower()).strip("_")[:40] or str(uuid.uuid4())[:8]
+    gid = base_id
+    i = 1
+    while await db.goals.find_one({"id": gid}):
+        gid = f"{base_id}_{i}"
+        i += 1
+    doc = {
+        "id": gid,
+        "name": payload.name,
+        "category": payload.category,
+        "description": payload.description,
+        "custom": True,
+    }
+    await db.goals.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api_router.delete("/dream-goals/{goal_id}")
+async def delete_goal(goal_id: str):
+    g = await db.goals.find_one({"id": goal_id}, {"_id": 0})
+    if not g:
+        raise HTTPException(404, "Dream goal not found")
+    if not g.get("custom"):
+        raise HTTPException(400, "Built-in dream goals cannot be removed.")
+    in_use_sel = await db.selections.find_one({"dream_goal": goal_id})
+    in_use_svc = await db.vendors.find_one({"services.dream_goal": goal_id})
+    if in_use_sel or in_use_svc:
+        raise HTTPException(400, "This dream goal is still linked to a selection or service.")
+    await db.goals.delete_one({"id": goal_id})
+    return {"ok": True}
 
 
 # ---- Vendors ----
@@ -610,17 +677,25 @@ async def dashboard():
 
 # ---- Seed ----
 async def _run_seed(reset: bool = False):
+    global _categories_seeded, _goals_seeded
     if reset:
         await db.vendors.delete_many({})
         await db.tasks.delete_many({})
         await db.selections.delete_many({})
         await db.project.delete_many({})
         await db.categories.delete_many({})
+        await db.goals.delete_many({})
+        _categories_seeded = False
+        _goals_seeded = False
 
     # Seed project if missing
     existing_project = await db.project.find_one({"id": "singleton"})
     if not existing_project:
         await db.project.insert_one(Project(**DEFAULT_PROJECT).model_dump())
+
+    # Seed categories & goals
+    await _seed_categories_if_missing()
+    await _seed_goals_if_missing()
 
     # Seed vendors if empty
     vendors_count = await db.vendors.count_documents({})
@@ -629,7 +704,6 @@ async def _run_seed(reset: bool = False):
             services = [VendorService(**s).model_dump() for s in v.get("services", [])]
             doc = {**v, "services": services, "id": v.get("id", str(uuid.uuid4())),
                    "created_at": now_iso()}
-            # Ensure required defaults
             doc.setdefault("status", "shortlisted")
             doc.setdefault("categories", [])
             await db.vendors.insert_one(Vendor(**doc).model_dump())
