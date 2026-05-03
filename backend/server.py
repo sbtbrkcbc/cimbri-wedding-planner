@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -20,11 +21,42 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-app = FastAPI(title="Veronica's Dream Wedding")
-api_router = APIRouter(prefix="/api")
-
 logger = logging.getLogger("wedding")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+
+# In-memory flag so we only attempt category-seeding once per process.
+_categories_seeded = False
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Startup ---
+    try:
+        vendors_count = await db.vendors.count_documents({})
+        project_doc = await db.project.find_one({"id": "singleton"})
+        if vendors_count == 0 and not project_doc:
+            logger.info("First boot — seeding database…")
+            try:
+                await _run_seed(reset=False)
+            except Exception as e:
+                logger.error(f"Seed failed: {e}")
+        else:
+            logger.info(f"Boot: {vendors_count} vendors in DB")
+    except Exception as e:
+        logger.error(f"Startup check failed (non-fatal): {e}")
+
+    yield
+
+    # --- Shutdown ---
+    try:
+        client.close()
+    except Exception:
+        pass
+
+
+app = FastAPI(title="Cimbri Wedding Planner", lifespan=lifespan)
+api_router = APIRouter(prefix="/api")
 
 
 # ============================
@@ -218,7 +250,19 @@ async def get_project_doc() -> dict:
 # ============================
 @api_router.get("/")
 async def root():
-    return {"message": "Veronica's Dream Wedding API", "status": "ok"}
+    return {"message": "Cimbri Wedding Planner API", "status": "ok"}
+
+
+@api_router.post("/")
+async def root_post():
+    # Some probes/scanners use POST; respond 200 to avoid false-unhealthy signals.
+    return {"status": "ok"}
+
+
+@api_router.get("/health")
+async def health():
+    # Fast health check — no DB hit, safe for readiness probes.
+    return {"status": "ok"}
 
 
 # ---- Project ----
@@ -246,17 +290,28 @@ class CategoryCreate(BaseModel):
 
 
 async def _seed_categories_if_missing():
-    """Seed the canonical DREAM_CATEGORIES into DB, preserving their ids."""
-    for c in DREAM_CATEGORIES:
-        exists = await db.categories.find_one({"id": c["id"]}, {"_id": 0})
-        if not exists:
-            await db.categories.insert_one({**c, "custom": False})
+    """Seed the canonical DREAM_CATEGORIES into DB, preserving their ids.
+
+    Runs at most once per process thanks to the `_categories_seeded` flag —
+    critical for performance because GET /dream-categories is called often.
+    """
+    global _categories_seeded
+    if _categories_seeded:
+        return
+    try:
+        for c in DREAM_CATEGORIES:
+            exists = await db.categories.find_one({"id": c["id"]}, {"_id": 0})
+            if not exists:
+                await db.categories.insert_one({**c, "custom": False})
+        _categories_seeded = True
+    except Exception as e:
+        logger.warning(f"Category seed skipped: {e}")
 
 
 @api_router.get("/dream-categories")
 async def get_categories():
     await _seed_categories_if_missing()
-    cats = await db.categories.find({}, {"_id": 0}).to_list(1000)
+    cats = await db.categories.find({}, {"_id": 0}).to_list(100)
     # Keep canonical ones first in their defined order, then custom ones alphabetically
     canonical_order = {c["id"]: i for i, c in enumerate(DREAM_CATEGORIES)}
     cats.sort(key=lambda c: (
@@ -483,9 +538,11 @@ async def delete_task(task_id: str):
 @api_router.get("/dashboard")
 async def dashboard():
     project = await get_project_doc()
-    sels = await db.selections.find({}, {"_id": 0}).to_list(2000)
-    tasks = await db.tasks.find({}, {"_id": 0}).to_list(2000)
-    vendors = await db.vendors.find({}, {"_id": 0}).to_list(2000)
+    # Bounded fetches — plenty of headroom for a personal wedding planner,
+    # keeps the endpoint fast on Atlas.
+    sels = await db.selections.find({}, {"_id": 0}).to_list(500)
+    tasks = await db.tasks.find({}, {"_id": 0}).to_list(500)
+    vendors = await db.vendors.find({}, {"_id": 0, "status": 1, "id": 1}).to_list(500)
 
     total_selected = sum(s.get("total", 0) for s in sels if s.get("status") in ("selected", "booked"))
     total_considering = sum(s.get("total", 0) for s in sels if s.get("status") == "considering")
@@ -552,13 +609,13 @@ async def dashboard():
 
 
 # ---- Seed ----
-@api_router.post("/seed")
-async def seed_data(reset: bool = False):
+async def _run_seed(reset: bool = False):
     if reset:
         await db.vendors.delete_many({})
         await db.tasks.delete_many({})
         await db.selections.delete_many({})
         await db.project.delete_many({})
+        await db.categories.delete_many({})
 
     # Seed project if missing
     existing_project = await db.project.find_one({"id": "singleton"})
@@ -586,27 +643,9 @@ async def seed_data(reset: bool = False):
     return {"ok": True, "seeded": True}
 
 
-# ============================
-# STARTUP
-# ============================
-@app.on_event("startup")
-async def on_startup():
-    # Auto-seed on first run
-    vendors_count = await db.vendors.count_documents({})
-    project_doc = await db.project.find_one({"id": "singleton"})
-    if vendors_count == 0 and not project_doc:
-        logger.info("First boot — seeding database…")
-        try:
-            await seed_data(reset=False)
-        except Exception as e:
-            logger.error(f"Seed failed: {e}")
-    else:
-        logger.info(f"Boot: {vendors_count} vendors in DB")
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    client.close()
+@api_router.post("/seed")
+async def seed_data_endpoint(reset: bool = False):
+    return await _run_seed(reset=reset)
 
 
 app.include_router(api_router)
